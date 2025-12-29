@@ -19,26 +19,6 @@ Script de scraping automatisé pour récupérer des articles académiques sur l'
 
 ## 📊 Dernier Scraping (29 Décembre 2025)
 
-### Statistiques
-
-| Métrique | Valeur |
-|----------|--------|
-| **Articles récupérés** | 34 |
-| **Articles rejetés (hors sujet)** | 9 |
-| **Taux de filtrage** | 79% conservés |
-| **PDFs téléchargés** | 30 (88%) |
-| **Période couverte** | 14-26 déc 2025 |
-
-### Répartition par thématique
-
-| Thématique | Articles |
-|------------|----------|
-| Prédiction de marché | 8 |
-| Deep Learning Finance | 7 |
-| Pricing & Risque | 6 |
-| Time Series Analysis | 5 |
-| Gestion de portefeuille | 5 |
-| Détection de fraude | 3 |
 
 ### Articles phares récupérés
 
