@@ -41,6 +41,8 @@ class FinanceAIScraper:
         self.download_pdfs = download_pdfs
         self.strict_filter = strict_filter
         self.rejected_count = 0
+        self.seen_titles = set()  # Pour la déduplication
+        self.duplicate_count = 0
         
         # Créer dossiers pour PDFs
         if self.download_pdfs:
@@ -52,6 +54,36 @@ class FinanceAIScraper:
                       'ieee', 'jmlr', 'researchgate']
             for source in sources:
                 (self.pdf_dir / source).mkdir(exist_ok=True)
+    
+    def normalize_title(self, title):
+        """Normaliser un titre pour la comparaison"""
+        # Enlever ponctuation, espaces multiples, mettre en minuscule
+        normalized = re.sub(r'[^\w\s]', '', title.lower())
+        normalized = re.sub(r'\s+', ' ', normalized).strip()
+        return normalized
+    
+    def is_duplicate(self, title):
+        """Vérifier si un article est un doublon"""
+        normalized = self.normalize_title(title)
+        if normalized in self.seen_titles:
+            self.duplicate_count += 1
+            return True
+        self.seen_titles.add(normalized)
+        return False
+    
+    def remove_duplicates(self):
+        """Supprimer les doublons des résultats"""
+        seen = set()
+        unique_results = []
+        for article in self.results:
+            normalized = self.normalize_title(article['title'])
+            if normalized not in seen:
+                seen.add(normalized)
+                unique_results.append(article)
+        
+        removed = len(self.results) - len(unique_results)
+        self.results = unique_results
+        return removed
     
     def is_finance_relevant(self, title, summary=""):
         """Vérifier si l'article est pertinent pour la finance"""
@@ -647,66 +679,104 @@ class FinanceAIScraper:
         except Exception as e:
             print(f"❌ Erreur ResearchGate: {e}")
     
-    def scrape_all_platforms(self, keywords_list=None):
-        """SCRAPE TOUTES LES 8 PLATEFORMES AVEC FILTRAGE STRICT"""
+    def scrape_all_platforms(self, keywords_list=None, target_articles=1000):
+        """SCRAPE TOUTES LES 8 PLATEFORMES - VERSION 1000+ ARTICLES
+        
+        Args:
+            keywords_list: Liste de mots-clés (None = liste étendue par défaut)
+            target_articles: Objectif minimum d'articles (défaut: 1000)
+        """
         if keywords_list is None:
+            # Liste étendue de 20 mots-clés pour maximiser les résultats
             keywords_list = [
-                "machine learning and finance",
-                "deep learning and trading",
-                "AI and market prediction",
-                "algorithmic trading and neural networks",
-                "reinforcement learning and portfolio optimization"
+                # Machine Learning & Finance
+                "machine learning finance",
+                "deep learning trading",
+                "neural network stock prediction",
+                "reinforcement learning portfolio",
+                "LSTM stock market",
+                # AI & Trading
+                "artificial intelligence trading",
+                "algorithmic trading machine learning",
+                "high frequency trading AI",
+                "automated trading neural network",
+                "quant trading deep learning",
+                # Risk & Fraud
+                "credit risk machine learning",
+                "fraud detection deep learning",
+                "financial risk prediction",
+                "market risk neural network",
+                # NLP & Finance
+                "NLP financial news",
+                "sentiment analysis stock",
+                "financial text mining",
+                "LLM finance",
+                # Crypto & Blockchain
+                "cryptocurrency prediction machine learning",
+                "bitcoin price forecasting neural network"
             ]
         
         print("\n" + "="*80)
-        print("🚀 SCRAPING TOUTES LES PLATEFORMES - DÉMARRAGE")
+        print(f"🚀 SCRAPING MASSIF - OBJECTIF: {target_articles}+ ARTICLES")
         print("="*80)
         print(f"📊 Nombre de mots-clés: {len(keywords_list)}")
         print(f"📚 Plateformes: 8 (arXiv, SSRN, Scholar, JFDS, Banking, IEEE, JMLR, RG)")
         print(f"🔒 Filtrage strict: {'ACTIVÉ' if self.strict_filter else 'DÉSACTIVÉ'}")
+        print(f"🔄 Déduplication: ACTIVÉE")
         print("="*80)
         
         for i, keywords in enumerate(keywords_list, 1):
             print(f"\n🔍 CYCLE {i}/{len(keywords_list)}: {keywords}")
+            print(f"   Articles actuels: {len(self.results)} | Objectif: {target_articles}")
             print("="*80)
             
-            # 1. arXiv
-            self.scrape_arxiv(keywords, max_results=50)
-            time.sleep(3)
+            # 1. arXiv - 100 articles par mot-clé
+            self.scrape_arxiv(keywords, max_results=100)
+            time.sleep(2)
             
-            # 2. SSRN
-            self.scrape_ssrn(keywords, max_pages=3)
-            time.sleep(3)
+            # 2. SSRN - 5 pages
+            self.scrape_ssrn(keywords, max_pages=5)
+            time.sleep(2)
             
-            # 3. Google Scholar (limité)
-            self.scrape_google_scholar(keywords, max_results=20)
-            time.sleep(5)
+            # 3. Google Scholar - 30 articles
+            self.scrape_google_scholar(keywords, max_results=30)
+            time.sleep(3)
             
             # 4. JFDS
             self.scrape_jfds(keywords)
-            time.sleep(3)
+            time.sleep(2)
             
             # 5. Banking Finance
             self.scrape_banking_finance(keywords)
-            time.sleep(3)
+            time.sleep(2)
             
-            # 6. IEEE
-            self.scrape_ieee(keywords, max_results=30)
-            time.sleep(3)
+            # 6. IEEE - 50 articles
+            self.scrape_ieee(keywords, max_results=50)
+            time.sleep(2)
             
             # 7. JMLR (une fois seulement)
             if i == 1:
                 self.scrape_jmlr()
-                time.sleep(3)
+                time.sleep(2)
             
-            # 8. ResearchGate
-            self.scrape_researchgate(keywords, max_results=30)
-            time.sleep(3)
+            # 8. ResearchGate - 50 articles
+            self.scrape_researchgate(keywords, max_results=50)
+            time.sleep(2)
+            
+            # Vérifier si objectif atteint
+            if len(self.results) >= target_articles:
+                print(f"\n✅ Objectif de {target_articles} articles atteint!")
+                break
+        
+        # Supprimer les doublons finaux
+        duplicates_removed = self.remove_duplicates()
         
         print("\n" + "="*80)
         print("✅ SCRAPING TERMINÉ!")
         print("="*80)
-        print(f"📊 Total articles récupérés: {len(self.results)}")
+        print(f"📊 Total articles uniques: {len(self.results)}")
+        print(f"🔄 Doublons supprimés: {duplicates_removed}")
+        print(f"🚫 Articles rejetés (hors sujet): {self.rejected_count}")
         
         # Compter PDFs
         pdfs_downloaded = sum(1 for r in self.results if r.get('pdf_path'))
@@ -828,54 +898,41 @@ function filterArticles() {{
 # ==================== UTILISATION ====================
 
 if __name__ == "__main__":
-    print("🎯 SCRAPER COMPLET - TOUTES LES PLATEFORMES IA & FINANCE")
+    print("🎯 SCRAPER MASSIF - OBJECTIF 1000+ ARTICLES IA & FINANCE")
     print("="*80)
-    print("🔒 Mode: FILTRAGE STRICT ACTIVÉ (articles finance uniquement)")
+    print("🔒 Mode: FILTRAGE STRICT + DÉDUPLICATION AUTOMATIQUE")
     print("="*80)
     
     # Créer le scraper avec téléchargement PDF ET filtrage strict
     scraper = FinanceAIScraper(download_pdfs=True, strict_filter=True)
     
-    # Mots-clés de recherche optimisés avec "and"
-    keywords = [
-        "machine learning and finance",
-        "deep learning and trading",
-        "AI and algorithmic trading",
-        "neural networks and market prediction",
-        "reinforcement learning and portfolio optimization"
-    ]
-    
-    # Lancer le scraping COMPLET de toutes les 8 plateformes
-    scraper.scrape_all_platforms(keywords_list=keywords)
+    # Lancer le scraping avec objectif de 1000 articles
+    # Les 20 mots-clés par défaut seront utilisés automatiquement
+    scraper.scrape_all_platforms(target_articles=1000)
     
     # Sauvegarder tous les résultats
-    scraper.save_results()
+    scraper.save_results('articles_1000_ia_finance')
     
     # Afficher aperçu des résultats
     print("\n" + "="*80)
-    print("📄 APERÇU DES RÉSULTATS (10 premiers articles):")
+    print("📄 APERÇU DES RÉSULTATS (15 premiers articles):")
     print("="*80)
     
-    for i, article in enumerate(scraper.results[:10], 1):
-        title_display = article['title'][:70] + "..." if len(article['title']) > 70 else article['title']
+    for i, article in enumerate(scraper.results[:15], 1):
+        title_display = article['title'][:65] + "..." if len(article['title']) > 65 else article['title']
         print(f"\n{i}. {title_display}")
         print(f"   📚 Source: {article['source']}")
-        print(f"   📅 Date: {article['published'] or 'N/A'}")
-        print(f"   👥 Auteurs: {', '.join(article['authors'][:2]) if article['authors'] else 'N/A'}")
         if article['pdf_path']:
-            print(f"   ✅ PDF: {article['pdf_path']}")
+            print(f"   ✅ PDF téléchargé")
         else:
-            print(f"   ❌ PDF: Non disponible")
-        url_display = article['url'][:60] + "..." if len(article['url']) > 60 else article['url']
-        print(f"   🔗 URL: {url_display}")
+            print(f"   ❌ PDF non disponible")
     
     print("\n" + "="*80)
     print("🎉 SCRAPING TERMINÉ!")
     print("="*80)
-    print(f"📊 Total: {len(scraper.results)} articles pertinents récupérés")
-    print(f"📥 PDFs: {sum(1 for r in scraper.results if r.get('pdf_path'))} téléchargés")
-    print(f"🚫 Rejetés (hors sujet): {scraper.rejected_count} articles filtrés")
+    print(f"📊 Total articles uniques: {len(scraper.results)}")
+    print(f"📥 PDFs téléchargés: {sum(1 for r in scraper.results if r.get('pdf_path'))}")
+    print(f"🔄 Doublons supprimés: {scraper.duplicate_count}")
+    print(f"🚫 Articles rejetés (hors sujet): {scraper.rejected_count}")
     print("\n💡 Consulte le fichier HTML pour naviguer facilement dans tous les articles!")
-    print("="*80)
-
     print("="*80)
