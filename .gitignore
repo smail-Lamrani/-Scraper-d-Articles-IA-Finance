@@ -13,10 +13,8 @@ wheels/
 pdfs_articles/
 pdfs_articles2/
 
-# Fichiers de sortie (générés automatiquement)
+# CSV files (can be large)
 *.csv
-*.json
-*_index_*.html
 
 # Lock files
 uv.lock
