@@ -1,0 +1,22 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# PDFs téléchargés (trop volumineux pour GitHub)
+pdfs_articles/
+pdfs_articles2/
+
+# Fichiers de sortie (générés automatiquement)
+*.csv
+*.json
+*_index_*.html
+
+# Lock files
+uv.lock
